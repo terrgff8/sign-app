@@ -123,7 +123,7 @@ export function SavedDocsManager({ onClose, onChanged }: { onClose(): void; onCh
             </div>
           </li>
         ))}
-        {list.length === 0 && <li className="muted">還沒有常用文件。打開文件、放好方框後，在「設定方框」按「常用文件」存起來。</li>}
+        {list.length === 0 && <li className="muted">還沒有常用文件。打開文件、放好方框後，在「設定方框」按「存成常用」。</li>}
       </ul>
 
       <div className="sheet-actions">

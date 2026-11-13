@@ -161,7 +161,7 @@ async function createSavedDoc(page: Page, name: string) {
   await page.getByRole('dialog', { name: '簽署人' }).getByRole('button', { name: '關閉' }).click();
   await page.getByRole('button', { name: '＋ 新增「乙方」的方框' }).click();
   const positions = await fieldPositions(page);
-  await page.getByRole('button', { name: '常用文件', exact: true }).click();
+  await page.getByRole('button', { name: '存成常用', exact: true }).click();
   await page.getByLabel('常用文件名稱').fill(name);
   await page.getByRole('button', { name: '存成常用文件' }).click();
   await expect(page.getByRole('status')).toContainText(`已存成常用文件「${name}」`);
@@ -215,11 +215,11 @@ test('常用文件：從它開啟後可更新方框，或另存新的一份', as
   await page.getByRole('tab', { name: /設定方框/ }).click();
   await page.locator('.field').first().click();
   await page.getByRole('button', { name: '刪除' }).click();
-  await page.getByRole('button', { name: '常用文件', exact: true }).click();
+  await page.getByRole('button', { name: '存成常用', exact: true }).click();
   await page.getByRole('button', { name: '更新「租約」' }).click();
   await expect(page.getByRole('status')).toContainText('已更新「租約」');
 
-  await page.getByRole('button', { name: '常用文件', exact: true }).click();
+  await page.getByRole('button', { name: '存成常用', exact: true }).click();
   await page.getByLabel('常用文件名稱').fill('租約-單方');
   await page.getByRole('button', { name: '另存' }).click();
   await page.getByRole('button', { name: '回首頁' }).click();

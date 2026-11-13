@@ -113,7 +113,7 @@ export function DocScreen() {
           </div>
           <div className="toolbar-row">
             <button className="btn" onClick={() => setSheet('savedDoc')}>
-              常用文件
+              存成常用
             </button>
             <button className="btn primary grow" onClick={newField}>
               ＋ 新增{activeSigner ? `「${activeSigner.name}」的` : ''}方框
