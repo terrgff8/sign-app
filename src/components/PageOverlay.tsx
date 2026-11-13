@@ -84,7 +84,7 @@ export function PageOverlay({ page, pageW, pageH }: Props) {
           interaction={placementInteraction(p)}
           selected={selectedId === p.id}
           className={`placement ${mode === 'fields' ? 'is-dim' : ''}`}
-          label="簽名"
+          label={p.isImage ? '圖片' : '簽名'}
           onTap={() => select(p.id)}
           onDragStart={checkpoint}
           onChange={(r) => moveRect(p.id, r)}

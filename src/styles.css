@@ -1005,6 +1005,8 @@ button,
 /* ---------- 提示 ---------- */
 .toast {
   position: fixed;
+  /* 只是提示，不能擋住底下的點擊（例如正要拉的簽名角） */
+  pointer-events: none;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
   transform: translateX(-50%);
@@ -1141,4 +1143,24 @@ button,
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.remove-page {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.94);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+.sheet-body .big-action {
+  box-shadow: none;
 }

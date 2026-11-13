@@ -15,6 +15,8 @@ export function DocumentViewer() {
   const select = useApp((s) => s.select);
   const setVisiblePage = useApp((s) => s.setVisiblePage);
   const scrollTarget = useApp((s) => s.scrollTarget);
+  const removeInsertedPage = useApp((s) => s.removeInsertedPage);
+  const setBusy = useApp((s) => s.setBusy);
 
   const scroller = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -156,6 +158,22 @@ export function DocumentViewer() {
             >
               <PageCanvas pdf={pdf} pageIndex={i} cssWidth={pageW} cssHeight={pageH} active={active.has(i)} />
               <PageOverlay page={i} pageW={pageW} pageH={pageH} />
+              {meta.insertedPages?.includes(i) && (
+                <button
+                  className="remove-page"
+                  onClick={async () => {
+                    if (!confirm(`移除第 ${i + 1} 頁（你插入的圖片頁）？頁上的簽名也會一起移除。`)) return;
+                    setBusy('正在移除…');
+                    try {
+                      await removeInsertedPage(i);
+                    } finally {
+                      setBusy(null);
+                    }
+                  }}
+                >
+                  移除這頁
+                </button>
+              )}
               <span className="page-number">
                 {i + 1} / {meta.pageSizes.length}
               </span>

@@ -5,11 +5,12 @@ import { selectors, useApp } from '../state/store';
 import { DocumentViewer } from './DocumentViewer';
 import { ExportDialog } from './ExportDialog';
 import { GuidedSignBar } from './GuidedSignBar';
+import { InsertImageSheet } from './InsertImageSheet';
 import { SignatureLibrary } from './SignatureLibrary';
 import { SignerSheet } from './SignerSheet';
 import { SavedDocSheet } from './SavedDocSheet';
 
-type SheetName = 'library' | 'signers' | 'savedDoc' | 'export' | null;
+type SheetName = 'library' | 'signers' | 'savedDoc' | 'export' | 'image' | null;
 
 export function DocScreen() {
   const meta = useApp((s) => s.meta)!;
@@ -124,15 +125,20 @@ export function DocScreen() {
     }
 
     return (
-      <div className="toolbar">
+      <div className="toolbar column">
         {work.fields.length > 0 && (
-          <button className="btn grow" onClick={startTurns} disabled={unsigned.length === 0}>
+          <button className="btn" onClick={startTurns} disabled={unsigned.length === 0}>
             {unsigned.length ? `輪流簽署（${unsigned.length} 格）` : '方框都簽好了'}
           </button>
         )}
-        <button className="btn primary grow" onClick={() => void addSignature()}>
-          ＋ 新增簽名
-        </button>
+        <div className="toolbar-row">
+          <button className="btn grow" onClick={() => setSheet('image')}>
+            插入圖片
+          </button>
+          <button className="btn primary grow" onClick={() => void addSignature()}>
+            ＋ 新增簽名
+          </button>
+        </div>
       </div>
     );
   };
@@ -178,6 +184,7 @@ export function DocScreen() {
       {sheet === 'signers' && <SignerSheet onClose={() => setSheet(null)} onPicked={setActiveSignerId} />}
       {sheet === 'savedDoc' && <SavedDocSheet onClose={() => setSheet(null)} />}
       {sheet === 'export' && <ExportDialog onClose={() => setSheet(null)} />}
+      {sheet === 'image' && <InsertImageSheet onClose={() => setSheet(null)} />}
     </div>
   );
 }

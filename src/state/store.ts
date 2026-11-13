@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { clamp, fitIntoBox } from '../lib/geometry';
+import { insertImagePages, removePage, shiftPageList, shiftWork } from '../lib/pages';
+import type { PageImage } from '../lib/import/imagesToPdf';
 import { openPdf, readPageSizes, type PDFDocumentProxy } from '../lib/pdfjs';
 import { requestPersist, saveSession, type Session } from '../lib/storage';
 import { uid } from '../lib/uid';
@@ -30,7 +32,11 @@ interface AppState {
   toast: Toast | null;
   scrollTarget: { page: number; y: number; nonce: number } | null;
 
-  openDocument(name: string, pdfBytes: Uint8Array, opts?: { work?: WorkState; id?: string; sourceDocId?: string }): Promise<void>;
+  openDocument(
+    name: string,
+    pdfBytes: Uint8Array,
+    opts?: { work?: WorkState; id?: string; sourceDocId?: string; insertedPages?: number[] },
+  ): Promise<void>;
   /** 存成／更新常用文件後，把目前文件連到它 */
   linkSavedDoc(id: string, name: string): void;
   restore(session: Session): Promise<void>;
@@ -53,6 +59,10 @@ interface AppState {
   undo(): void;
 
   placeFreeSignature(sig: SignatureResult): void;
+  placeImage(dataUrl: string, aspect: number): void;
+  /** 圖片各成一頁插在目前頁之後；頁碼會變，所以清空復原紀錄 */
+  insertPages(images: PageImage[]): Promise<void>;
+  removeInsertedPage(page: number): Promise<void>;
   signField(fieldId: string, sig: SignatureResult): void;
   removeItem(id: string): void;
 
@@ -72,6 +82,24 @@ export const useApp = create<AppState>((set, get) => {
   const commit = (next: WorkState) => {
     const { work, history } = get();
     set({ work: next, history: [...history.slice(-HISTORY_LIMIT + 1), work] });
+  };
+
+  /** 換掉 PDF 後重開 pdf.js、位移頁碼；頁碼改了，舊的復原快照不能用 */
+  const replacePdf = async (bytes: Uint8Array, at: number, delta: number, added: number[]) => {
+    const { meta, work, pdf: oldPdf } = get();
+    if (!meta) return;
+    const pdf = await openPdf(bytes);
+    const pageSizes = await readPageSizes(pdf);
+    set({
+      pdfBytes: bytes,
+      pdf,
+      meta: { ...meta, pageSizes, insertedPages: [...shiftPageList(meta.insertedPages ?? [], at, delta), ...added] },
+      work: shiftWork(work, at, delta),
+      history: [],
+      selectedId: null,
+      visiblePage: Math.min(get().visiblePage, pageSizes.length - 1),
+    });
+    await oldPdf?.loadingTask.destroy();
   };
 
   return {
@@ -95,7 +123,7 @@ export const useApp = create<AppState>((set, get) => {
       const pageSizes = await readPageSizes(pdf);
       await get().pdf?.loadingTask.destroy();
       set({
-        meta: { id: opts.id ?? uid(), name, pageSizes, sourceDocId: opts.sourceDocId },
+        meta: { id: opts.id ?? uid(), name, pageSizes, sourceDocId: opts.sourceDocId, insertedPages: opts.insertedPages },
         pdfBytes,
         pdf,
         work: opts.work ?? emptyWork(),
@@ -111,7 +139,12 @@ export const useApp = create<AppState>((set, get) => {
 
     async restore(session) {
       const { meta } = session;
-      await get().openDocument(meta.name, session.pdfBytes, { work: session.work, id: meta.id, sourceDocId: meta.sourceDocId });
+      await get().openDocument(meta.name, session.pdfBytes, {
+        work: session.work,
+        id: meta.id,
+        sourceDocId: meta.sourceDocId,
+        insertedPages: meta.insertedPages,
+      });
     },
 
     linkSavedDoc(id, name) {
@@ -174,6 +207,48 @@ export const useApp = create<AppState>((set, get) => {
       };
       commit({ ...work, placements: [...work.placements, placement] });
       set({ selectedId: placement.id });
+    },
+
+    placeImage(dataUrl, aspect) {
+      const { meta, visiblePage, work } = get();
+      if (!meta) return;
+      const size = meta.pageSizes[visiblePage];
+      // 預設寬 40% 頁寬，高度不超過半頁
+      let w = 0.4;
+      let h = (w * size.width) / aspect / size.height;
+      if (h > 0.5) {
+        h = 0.5;
+        w = (h * size.height * aspect) / size.width;
+      }
+      const placement: Placement = {
+        id: uid(),
+        page: visiblePage,
+        x: (1 - w) / 2,
+        y: (1 - h) / 2,
+        w,
+        h,
+        pngDataUrl: dataUrl,
+        aspect,
+        isImage: true,
+      };
+      commit({ ...work, placements: [...work.placements, placement] });
+      set({ selectedId: placement.id });
+    },
+
+    async insertPages(images) {
+      const { meta, pdfBytes, visiblePage } = get();
+      if (!meta || !pdfBytes || images.length === 0) return;
+      const at = visiblePage + 1;
+      const n = images.length;
+      const added = Array.from({ length: n }, (_, i) => at + i);
+      await replacePdf(await insertImagePages(pdfBytes, at, images), at, n, added);
+      get().requestScroll(at, 0);
+    },
+
+    async removeInsertedPage(page) {
+      const { meta, pdfBytes } = get();
+      if (!meta || !pdfBytes || !meta.insertedPages?.includes(page)) return;
+      await replacePdf(await removePage(pdfBytes, page), page, -1, []);
     },
 
     signField(fieldId, sig) {

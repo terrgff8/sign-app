@@ -1,4 +1,6 @@
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { describe, expect, it } from 'vitest';
+import { insertImagePages, removePage, shiftPageList, shiftWork } from '../../src/lib/pages';
 import { fitIntoBox, normalizeRotation } from '../../src/lib/geometry';
 import { homography, outputSize, project, warpPerspective } from '../../src/lib/import/homography';
 import { base64ToBytes, BackupFormatError, bytesToBase64, makeSavedDoc, parseBackup, serializeBackup, toWorkState } from '../../src/lib/savedDocs';
@@ -150,5 +152,61 @@ describe('常用文件', () => {
     ],
   ])('壞檔：%s', (_name, text) => {
     expect(() => parseBackup(text)).toThrow(BackupFormatError);
+  });
+});
+
+describe('插入／移除頁的頁碼位移', () => {
+  const work = {
+    signers: [{ id: 's1', name: '甲方' }],
+    fields: [
+      { id: 'f0', page: 0, x: 0, y: 0, w: 0.1, h: 0.1, signerId: 's1' },
+      { id: 'f2', page: 2, x: 0, y: 0, w: 0.1, h: 0.1, signerId: 's1' },
+    ],
+    placements: [
+      { id: 'p1', page: 1, x: 0, y: 0, w: 0.1, h: 0.1, pngDataUrl: '', aspect: 1 },
+      { id: 'p2', page: 2, x: 0, y: 0, w: 0.1, h: 0.1, pngDataUrl: '', aspect: 1, fieldId: 'f2' },
+    ],
+  };
+
+  it('在第 1 頁之後插 2 頁：第 2 頁起往後移 2', () => {
+    const w = shiftWork(work, 1, 2);
+    expect(w.fields.map((f) => f.page)).toEqual([0, 4]);
+    expect(w.placements.map((p) => p.page)).toEqual([3, 4]);
+  });
+
+  it('刪掉第 3 頁：頁上方框與框內簽名一起丟掉，其他不動', () => {
+    const w = shiftWork(work, 2, -1);
+    expect(w.fields.map((f) => f.id)).toEqual(['f0']);
+    expect(w.placements.map((p) => p.id)).toEqual(['p1']);
+    expect(w.placements[0].page).toBe(1);
+  });
+
+  it('刪掉前面的頁：後面頁碼往前', () => {
+    const w = shiftWork(work, 1, -1);
+    expect(w.fields.map((f) => f.page)).toEqual([0, 1]);
+    expect(w.placements.map((p) => p.id)).toEqual(['p2']);
+  });
+
+  it('插入頁清單跟著位移', () => {
+    expect(shiftPageList([1, 4], 2, 3)).toEqual([1, 7]);
+    expect(shiftPageList([1, 4], 1, -1)).toEqual([3]);
+  });
+
+  it('insertImagePages／removePage 改變頁數與位置', async () => {
+    const pdf = await PDFDocument.create();
+    pdf.addPage([100, 200]);
+    pdf.addPage([300, 400]);
+    const png = Uint8Array.from(
+      atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='),
+      (c) => c.charCodeAt(0),
+    );
+    const out = await insertImagePages(await pdf.save(), 1, [{ bytes: png, type: 'png' }]);
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(3);
+    expect(doc.getPage(0).getWidth()).toBe(100);
+    expect(Math.round(doc.getPage(1).getWidth())).toBe(595);
+    expect(doc.getPage(2).getWidth()).toBe(300);
+    const back = await PDFDocument.load(await removePage(out, 1));
+    expect(back.getPages().map((p) => p.getWidth())).toEqual([100, 300]);
   });
 });

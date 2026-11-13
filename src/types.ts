@@ -25,10 +25,13 @@ export interface Field extends RelRect {
 
 export interface Placement extends RelRect {
   id: string;
+  /** 圖片 data URL（PNG 或 JPEG；欄位名沿用舊名以相容自動存檔） */
   pngDataUrl: string;
-  /** 簽名圖原始像素比例 w/h，縮放時鎖定 */
+  /** 圖片原始像素比例 w/h，縮放時鎖定 */
   aspect: number;
   fieldId?: string;
+  /** 插入的圖片（非簽名） */
+  isImage?: boolean;
 }
 
 export interface DocMeta {
@@ -37,6 +40,8 @@ export interface DocMeta {
   pageSizes: PageSize[];
   /** 從哪份常用文件開出來的（更新常用文件用） */
   sourceDocId?: string;
+  /** 使用者自己插入的頁（可「移除這頁」） */
+  insertedPages?: number[];
 }
 
 export interface WorkState {

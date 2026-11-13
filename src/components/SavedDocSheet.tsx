@@ -43,8 +43,9 @@ export function SavedDocSheet({ onClose }: { onClose(): void }) {
     run(async () => {
       if (!source) return;
       const doc = makeSavedDoc(source.name, meta.pageSizes, work.signers, work.fields, source);
-      await putSavedDoc(doc);
-      showToast(`已更新「${doc.name}」的方框`);
+      // PDF 一起寫：插入／移除頁後頁數會變
+      await putSavedDoc(doc, pdfBytes);
+      showToast(`已更新「${doc.name}」`);
     });
 
   if (source === undefined) return null;
@@ -61,7 +62,7 @@ export function SavedDocSheet({ onClose }: { onClose(): void }) {
           <button className="btn primary block" disabled={saving} onClick={update}>
             更新「{source.name}」
           </button>
-          <p className="muted small">用目前的方框和簽署人取代原本的設定。</p>
+          <p className="muted small">用目前的方框、簽署人和頁面（含插入的圖片頁）取代原本的內容。</p>
           <hr className="divider" />
           <p className="small">或另存成一份新的常用文件：</p>
         </>

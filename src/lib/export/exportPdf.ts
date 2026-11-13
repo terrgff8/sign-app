@@ -10,18 +10,20 @@ export function dataUrlToBytes(dataUrl: string): Uint8Array {
   return out;
 }
 
-/** 把簽名 PNG 壓進 PDF（純視覺簽名），回傳新檔 bytes */
+/** 把簽名／插入的圖片壓進 PDF（純視覺簽名），回傳新檔 bytes */
 export async function exportSignedPdf(pdfBytes: Uint8Array, placements: Placement[]): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(pdfBytes, { updateMetadata: false });
   const pages = pdf.getPages();
   const cache = new Map<string, Awaited<ReturnType<typeof pdf.embedPng>>>();
+  const embed = (dataUrl: string) =>
+    dataUrl.startsWith('data:image/jpeg') ? pdf.embedJpg(dataUrlToBytes(dataUrl)) : pdf.embedPng(dataUrlToBytes(dataUrl));
 
   for (const p of placements) {
     const page = pages[p.page];
     if (!page) continue;
     let img = cache.get(p.pngDataUrl);
     if (!img) {
-      img = await pdf.embedPng(dataUrlToBytes(p.pngDataUrl));
+      img = await embed(p.pngDataUrl);
       cache.set(p.pngDataUrl, img);
     }
     const rot = normalizeRotation(page.getRotation().angle);

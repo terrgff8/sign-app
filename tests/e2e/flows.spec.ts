@@ -33,6 +33,8 @@ test('PDF 自由簽：拖移、縮放、復原、匯出位置與畫面一致', a
   await page.getByLabel('存到我的簽名').check();
   await drawSignature(page);
   await expect(page.locator('.placement')).toHaveCount(1);
+  // 「已存到我的簽名」提示不能擋住底下的點擊
+  await expect(page.getByRole('status')).toHaveCSS('pointer-events', 'none');
 
   const before = await relRect(page, '.placement');
   await dragBy(page, '.placement', -40, 60);
@@ -42,6 +44,8 @@ test('PDF 自由簽：拖移、縮放、復原、匯出位置與畫面一致', a
   close(moved.w, before.w);
 
   // 拉右下角放大，比例要維持
+  // 拉把可能被拖到工具列後面，先捲進畫面
+  await page.locator('.handle-br').scrollIntoViewIfNeeded();
   const handle = (await page.locator('.handle-br').boundingBox())!;
   await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
   await page.mouse.down();
@@ -139,6 +143,8 @@ test('方框沒簽完匯出會警告；簽名放進方框後仍可放大到框�
   await drawSignature(page);
   const field = await relRect(page, '.field');
   await page.locator('.placement').click();
+  // 拉把可能被拖到工具列後面，先捲進畫面
+  await page.locator('.handle-br').scrollIntoViewIfNeeded();
   const handle = (await page.locator('.handle-br').boundingBox())!;
   await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
   await page.mouse.down();
