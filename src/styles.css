@@ -531,7 +531,7 @@ button,
   border-radius: 4px;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  /* 不可 overflow:hidden，否則四角拉把被裁掉、手指會按到方框本體變成移動 */
   cursor: pointer;
 }
 
@@ -575,6 +575,9 @@ button,
   text-align: center;
   pointer-events: none;
   padding: 2px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .field-label small {
@@ -582,44 +585,64 @@ button,
   opacity: 0.85;
 }
 
+/* 觸控熱區 36px，大部分在框外（框內只佔 8px），小方框中間才拖得動；可見圓點 16px 對齊在角上 */
 .handle {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   touch-action: none;
+  z-index: 1;
 }
 
 .handle::after {
   content: '';
   position: absolute;
-  inset: 8px;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: #fff;
   border: 2px solid var(--accent);
 }
 
 .handle-tl {
-  left: -14px;
-  top: -14px;
+  left: -28px;
+  top: -28px;
   cursor: nwse-resize;
+}
+.handle-tl::after {
+  right: 0;
+  bottom: 0;
 }
 
 .handle-tr {
-  right: -14px;
-  top: -14px;
+  right: -28px;
+  top: -28px;
   cursor: nesw-resize;
+}
+.handle-tr::after {
+  left: 0;
+  bottom: 0;
 }
 
 .handle-br {
-  right: -14px;
-  bottom: -14px;
+  right: -28px;
+  bottom: -28px;
   cursor: nwse-resize;
+}
+.handle-br::after {
+  left: 0;
+  top: 0;
 }
 
 .handle-bl {
-  left: -14px;
-  bottom: -14px;
+  left: -28px;
+  bottom: -28px;
   cursor: nesw-resize;
+}
+.handle-bl::after {
+  right: 0;
+  top: 0;
 }
 
 /* ---------- 底部工具列 ---------- */
