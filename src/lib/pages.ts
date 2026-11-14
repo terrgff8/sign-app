@@ -33,7 +33,8 @@ export function shiftWork(work: WorkState, at: number, delta: number): WorkState
   const placements = work.placements
     .filter((p) => !removed(p.page) && (!p.fieldId || fieldIds.has(p.fieldId)))
     .map((p) => ({ ...p, page: move(p.page) }));
-  return { signers: work.signers, fields, placements };
+  const strokes = (work.strokes ?? []).filter((s) => !removed(s.page)).map((s) => ({ ...s, page: move(s.page) }));
+  return { signers: work.signers, fields, placements, strokes };
 }
 
 /** 使用者插入頁的頁碼清單跟著位移 */

@@ -1,13 +1,19 @@
 import { create } from 'zustand';
+import { PEN_COLORS, PEN_SIZES } from '../lib/colors';
 import { clamp, fitIntoBox } from '../lib/geometry';
 import { insertImagePages, removePage, shiftPageList, shiftWork } from '../lib/pages';
 import type { PageImage } from '../lib/import/imagesToPdf';
 import { openPdf, readPageSizes, type PDFDocumentProxy } from '../lib/pdfjs';
 import { requestPersist, saveSession, type Session } from '../lib/storage';
 import { uid } from '../lib/uid';
-import type { DocMeta, Field, Placement, RelRect, SignatureResult, Signer, WorkState } from '../types';
+import type { DocMeta, Field, Placement, RelRect, SignatureResult, Signer, Stroke, WorkState } from '../types';
 
-export type Mode = 'sign' | 'fields' | 'guided';
+export type Mode = 'sign' | 'fields' | 'guided' | 'draw';
+
+export interface Pen {
+  color: string;
+  width: number;
+}
 
 export type PadTarget = { kind: 'free' } | { kind: 'field'; fieldId: string };
 
@@ -28,6 +34,7 @@ interface AppState {
   visiblePage: number;
   zoom: number;
   pad: PadTarget | null;
+  pen: Pen;
   busy: string | null;
   toast: Toast | null;
   scrollTarget: { page: number; y: number; nonce: number } | null;
@@ -49,6 +56,8 @@ interface AppState {
   setVisiblePage(p: number): void;
   setZoom(z: number): void;
   openPad(target: PadTarget | null): void;
+  setPen(patch: Partial<Pen>): void;
+  addStroke(stroke: Omit<Stroke, 'id'>): void;
   setBusy(text: string | null): void;
   showToast(text: string): void;
   requestScroll(page: number, y: number): void;
@@ -114,6 +123,7 @@ export const useApp = create<AppState>((set, get) => {
     visiblePage: 0,
     zoom: 1,
     pad: null,
+    pen: { color: PEN_COLORS[0].value, width: PEN_SIZES[1].value },
     busy: null,
     toast: null,
     scrollTarget: null,
@@ -166,6 +176,11 @@ export const useApp = create<AppState>((set, get) => {
     setVisiblePage: (visiblePage) => set({ visiblePage }),
     setZoom: (z) => set({ zoom: clamp(z, 1, 4) }),
     openPad: (pad) => set({ pad }),
+    setPen: (patch) => set({ pen: { ...get().pen, ...patch } }),
+    addStroke(stroke) {
+      const { work } = get();
+      commit({ ...work, strokes: [...(work.strokes ?? []), { id: uid(), ...stroke }] });
+    },
     setBusy: (busy) => set({ busy }),
     showToast: (text) => set({ toast: { id: ++toastSeq, text } }),
     requestScroll: (page, y) => set({ scrollTarget: { page, y, nonce: ++toastSeq } }),
@@ -292,6 +307,7 @@ export const useApp = create<AppState>((set, get) => {
       const { work } = get();
       const fieldIds = new Set(work.fields.filter((f) => f.signerId === id).map((f) => f.id));
       commit({
+        ...work,
         signers: work.signers.filter((s) => s.id !== id),
         fields: work.fields.filter((f) => !fieldIds.has(f.id)),
         placements: work.placements.filter((p) => !p.fieldId || !fieldIds.has(p.fieldId)),

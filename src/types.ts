@@ -44,10 +44,21 @@ export interface DocMeta {
   insertedPages?: number[];
 }
 
+/** 畫筆筆跡：points 為 0–1 相對座標（顯示方向），width 為筆寬占頁寬的比例 */
+export interface Stroke {
+  id: string;
+  page: number;
+  color: string;
+  width: number;
+  points: [number, number][];
+}
+
 export interface WorkState {
   signers: Signer[];
   fields: Field[];
   placements: Placement[];
+  /** 選填：舊版自動存檔沒有這欄 */
+  strokes?: Stroke[];
 }
 
 /** 常用文件：PDF＋簽署人＋方框；PDF bytes 另存（見 storage.ts） */

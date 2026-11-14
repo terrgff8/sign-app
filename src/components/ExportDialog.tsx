@@ -24,7 +24,7 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
   useEffect(() => {
     if (step !== 'working') return;
     let alive = true;
-    exportSignedPdf(pdfBytes, work.placements)
+    exportSignedPdf(pdfBytes, work.placements, work.strokes)
       .then((bytes) => {
         if (!alive) return;
         setResult(bytes);

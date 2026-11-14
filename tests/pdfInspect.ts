@@ -56,3 +56,51 @@ export async function imageRectsOnPage(bytes: Uint8Array, pageIndex: number) {
   return rects;
 }
 
+
+/** 用 pdf.js 讀回匯出檔，取每條折線在「顯示座標（0–1）」的頂點、線寬（點）與顏色 */
+export async function strokesOnPage(bytes: Uint8Array, pageIndex: number) {
+  const doc = await pdfjs.getDocument({ data: bytes.slice(), useWorkerFetch: false, isEvalSupported: false } as never).promise;
+  const page = await doc.getPage(pageIndex + 1);
+  const vp = page.getViewport({ scale: 1 });
+  const ops = await page.getOperatorList();
+  let ctm: M = [1, 0, 0, 1, 0, 0];
+  const stack: M[] = [];
+  let color = '';
+  let width = 0;
+  const out: { color: string; width: number; points: [number, number][] }[] = [];
+  const toDisplay = (x: number, y: number): [number, number] => {
+    const [ux, uy] = apply(ctm, x, y);
+    const [vx, vy] = vp.convertToViewportPoint(ux, uy);
+    return [vx / vp.width, vy / vp.height];
+  };
+  ops.fnArray.forEach((fn, i) => {
+    const args = ops.argsArray[i];
+    if (fn === pdfjs.OPS.save) stack.push(ctm);
+    else if (fn === pdfjs.OPS.restore) ctm = stack.pop() ?? ctm;
+    else if (fn === pdfjs.OPS.transform) ctm = mul(ctm, args as M);
+    else if (fn === pdfjs.OPS.setStrokeRGBColor) color = args[0] as string;
+    else if (fn === pdfjs.OPS.setLineWidth) width = args[0] as number;
+    else if (fn === pdfjs.OPS.constructPath) {
+      // pdf.js 6.x：args = [paintOp, [path 資料], minMax]；path 資料 0=moveTo、1=lineTo，各帶 x y
+      const d = Array.from(args[1][0] as ArrayLike<number>);
+      const points: [number, number][] = [];
+      for (let k = 0; k < d.length; ) {
+        if (d[k] === 0 || d[k] === 1) {
+          const p = toDisplay(d[k + 1], d[k + 2]);
+          const last = points[points.length - 1];
+          if (!last || last[0] !== p[0] || last[1] !== p[1]) points.push(p);
+          k += 3;
+        } else break;
+      }
+      if (!points.length) return;
+      // 一條筆跡被拆成多段線（每段一個 path）：頭尾相接、同色同寬就併回同一條
+      const prev = out[out.length - 1];
+      const tail = prev?.points[prev.points.length - 1];
+      if (prev && tail && prev.color === color && prev.width === width && Math.hypot(tail[0] - points[0][0], tail[1] - points[0][1]) < 1e-9) {
+        prev.points.push(...points.slice(1));
+      } else out.push({ color, width, points });
+    }
+  });
+  await doc.loadingTask.destroy();
+  return out;
+}

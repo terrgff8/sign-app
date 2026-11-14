@@ -1,6 +1,7 @@
 import { useApp } from '../state/store';
 import { signerColor } from '../lib/colors';
 import { OverlayItem } from './OverlayItem';
+import { StrokeLayer } from './StrokeLayer';
 import type { Field, Placement } from '../types';
 
 interface Props {
@@ -92,6 +93,7 @@ export function PageOverlay({ page, pageW, pageH }: Props) {
           <img src={p.pngDataUrl} alt="" draggable={false} />
         </OverlayItem>
       ))}
+      <StrokeLayer page={page} pageW={pageW} pageH={pageH} />
     </div>
   );
 }

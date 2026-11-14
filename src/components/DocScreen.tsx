@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signerColor } from '../lib/colors';
+import { PEN_COLORS, PEN_SIZES, signerColor } from '../lib/colors';
 import { listSignatures } from '../lib/storage';
 import { selectors, useApp } from '../state/store';
 import { DocumentViewer } from './DocumentViewer';
@@ -18,8 +18,9 @@ export function DocScreen() {
   const mode = useApp((s) => s.mode);
   const selectedId = useApp((s) => s.selectedId);
   const zoom = useApp((s) => s.zoom);
+  const pen = useApp((s) => s.pen);
   const canUndo = useApp((s) => s.history.length > 0);
-  const { leaveDocument, setMode, undo, select, removeItem, addField, addSigner, setFieldSigner, startGuided, openPad, setZoom } =
+  const { leaveDocument, setMode, undo, select, removeItem, addField, addSigner, setFieldSigner, startGuided, openPad, setZoom, setPen } =
     useApp.getState();
   const [sheet, setSheet] = useState<SheetName>(null);
   const [activeSignerId, setActiveSignerId] = useState<string | null>(null);
@@ -49,6 +50,47 @@ export function DocScreen() {
 
   const bottom = () => {
     if (mode === 'guided') return <GuidedSignBar />;
+
+    if (mode === 'draw') {
+      return (
+        <div className="toolbar column">
+          <div className="toolbar-row pen-row">
+            <div className="pen-colors" role="radiogroup" aria-label="筆的顏色">
+              {PEN_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  role="radio"
+                  aria-checked={pen.color === c.value}
+                  aria-label={c.name}
+                  className={`pen-color ${pen.color === c.value ? 'is-on' : ''}`}
+                  style={{ ['--pen' as string]: c.value }}
+                  onClick={() => setPen({ color: c.value })}
+                />
+              ))}
+            </div>
+            <div className="pen-sizes" role="radiogroup" aria-label="筆的粗細">
+              {PEN_SIZES.map((z) => (
+                <button
+                  key={z.value}
+                  role="radio"
+                  aria-checked={pen.width === z.value}
+                  className={`chip ${pen.width === z.value ? 'is-on' : ''}`}
+                  onClick={() => setPen({ width: z.value })}
+                >
+                  {z.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="toolbar-row">
+            <span className="toolbar-hint grow">單指畫・雙指縮放／移動</span>
+            <button className="btn primary" onClick={() => setMode('sign')}>
+              完成
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     if (selectedPlacement && mode === 'sign') {
       return (
@@ -135,6 +177,9 @@ export function DocScreen() {
           <button className="btn grow" onClick={() => setSheet('image')}>
             插入圖片
           </button>
+          <button className="btn grow" onClick={() => setMode('draw')}>
+            畫筆簽名
+          </button>
           <button className="btn primary grow" onClick={() => void addSignature()}>
             ＋ 新增簽名
           </button>
@@ -158,7 +203,7 @@ export function DocScreen() {
         </button>
       </header>
 
-      {mode !== 'guided' && (
+      {mode !== 'guided' && mode !== 'draw' && (
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={mode === 'sign'} className="tab" onClick={() => setMode('sign')}>
             簽名

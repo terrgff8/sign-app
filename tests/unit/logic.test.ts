@@ -187,6 +187,14 @@ describe('插入／移除頁的頁碼位移', () => {
     expect(w.placements.map((p) => p.id)).toEqual(['p2']);
   });
 
+  it('筆跡跟著頁位移；刪頁時該頁筆跡一起丟掉；舊資料沒有 strokes 也不壞', () => {
+    const st = (id: string, page: number) => ({ id, page, color: '#111114', width: 0.005, points: [[0.1, 0.1]] as [number, number][] });
+    const withStrokes = { ...work, strokes: [st('s0', 0), st('s1', 1), st('s2', 2)] };
+    expect(shiftWork(withStrokes, 1, 2).strokes!.map((s) => s.page)).toEqual([0, 3, 4]);
+    expect(shiftWork(withStrokes, 1, -1).strokes!.map((s) => [s.id, s.page])).toEqual([['s0', 0], ['s2', 1]]);
+    expect(shiftWork(work, 1, 1).strokes).toEqual([]);
+  });
+
   it('插入頁清單跟著位移', () => {
     expect(shiftPageList([1, 4], 2, 3)).toEqual([1, 7]);
     expect(shiftPageList([1, 4], 1, -1)).toEqual([3]);
